@@ -1,0 +1,6 @@
+openai>=1.0.0
+python-dotenv
+pandas
+requests  
+aiohttp>=3.9
+PyYAML>=6.0

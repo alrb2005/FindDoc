@@ -1,0 +1,29 @@
+{
+  "resourceType": "Observation",
+  "id": "47196316",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2025-05-10T10:07:53.903+00:00",
+    "source": "#rGK9yEH27Fi3h0NH"
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "4548-4",
+        "display": "Hemoglobin A1c/Hemoglobin.total in Blood"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/597069"
+  },
+  "effectiveDateTime": "2025-05-10T12:00:00Z",
+  "valueQuantity": {
+    "value": 7.2,
+    "unit": "%",
+    "system": "http://unitsofmeasure.org",
+    "code": "%"
+  }
+}

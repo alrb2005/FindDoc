@@ -1,0 +1,27 @@
+你是一位家庭醫師。請根據下面資料，挑選最多三家診所給病人：
+### tags_current
+{TAGS_CUR}
+
+### tags_relevant_history
+{TAGS_HIST}
+
+### clinics_by_tag
+{CLINICS}
+
+規則：
+1. 必須覆蓋所有 tags_current。
+2. 若診所同時覆蓋 tags_relevant_history，加分。
+3. 其他條件相近時，優先距離近，其次評分高。
+4. 請輸出 Markdown，格式範例：
+
+### 推薦診所
+1. [診所名稱](map_url)（距離 0.8 公里，評分 4.6）  
+    
+   ‐ **為何推薦**：可立即做腦震盪評估並安排影像檢查。  
+
+（至多列 3 間）
+
+### 自我照護提醒
+<30~60 字：簡單注意事項>
+
+請只回 Markdown 內容，不要加其他說明。

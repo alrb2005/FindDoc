@@ -1,0 +1,13 @@
+{
+  "resourceType": "Patient",
+  "id": "597069",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2020-02-03T11:37:45.750+00:00",
+    "source": "#ZlJ6LSKMzn71LTn9"
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><table class=\"hapiPropertyTable\"><tbody/></table></div>"
+  }
+}

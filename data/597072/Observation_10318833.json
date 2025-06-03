@@ -1,0 +1,27 @@
+{
+  "resourceType": "Observation",
+  "id": "10318833",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2023-04-19T10:06:30.704+00:00",
+    "source": "#ODhCvKNYwrJ6WafV"
+  },
+  "code": {
+    "coding": [
+      {
+        "system": "http://foo",
+        "code": "12345"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/597072"
+  },
+  "effectiveDateTime": "2023-04-19T09:34:50+01:00",
+  "valueQuantity": {
+    "value": 123,
+    "unit": "kg",
+    "system": "http://bar",
+    "code": "kg"
+  }
+}

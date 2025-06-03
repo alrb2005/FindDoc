@@ -1,0 +1,50 @@
+{
+  "resourceType": "Condition",
+  "id": "597131",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2020-02-03T15:29:57.371+00:00",
+    "source": "#fESZE0R64pwNNFxQ",
+    "profile": [
+      "http://fhir.de/StructureDefinition/condition-de-icd10"
+    ]
+  },
+  "identifier": [
+    {
+      "use": "official",
+      "system": "http://www.amc.nl/zorgportal/identifiers/visits",
+      "value": "jfqa4"
+    }
+  ],
+  "code": {
+    "coding": [
+      {
+        "extension": [
+          {
+            "url": "http://fhir.de/StructureDefinition/icd-10-gm-haupt-kreuz",
+            "valueCoding": {
+              "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+              "version": "2019",
+              "code": "F16.1"
+            }
+          },
+          {
+            "url": "http://fhir.de/StructureDefinition/icd-10-gm-ausrufezeichen",
+            "valueCoding": {
+              "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+              "version": "2019",
+              "code": "U69.32"
+            }
+          }
+        ],
+        "system": "http://fhir.de/CodeSystem/dimdi/icd-10-gm",
+        "version": "2019",
+        "code": "F16.1 U69.32!",
+        "display": "Psychische Verhaltensst\u00f6rung duch Halluzinogene (Akute Intoxikation) bei intraven\u00f6sem Konsum"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/597107"
+  }
+}

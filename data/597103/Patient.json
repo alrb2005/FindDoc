@@ -1,0 +1,98 @@
+{
+  "resourceType": "Patient",
+  "id": "597103",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2020-02-03T15:06:49.560+00:00",
+    "source": "#WZhgA5RVLdtXhk9b"
+  },
+  "text": {
+    "status": "generated"
+  },
+  "name": [
+    {
+      "use": "official",
+      "text": "Serena Mustermann",
+      "family": "Mustermann",
+      "given": [
+        "Serena"
+      ]
+    }
+  ],
+  "address": [
+    {
+      "use": "home",
+      "type": "physical",
+      "text": "Musterweg 42, Hinterhof 2. Etage, 10787 Berlin, Deutschland",
+      "line": [
+        "Musterweg 42",
+        "Hinterhof 2. Etage"
+      ],
+      "_line": [
+        {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-streetName",
+              "valueString": "Musterweg"
+            },
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-houseNumber",
+              "valueString": "42"
+            }
+          ]
+        },
+        {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-additionalLocator",
+              "valueString": "Hinterhof 2. Etage"
+            }
+          ]
+        }
+      ],
+      "city": "Berlin",
+      "state": "DE-BE",
+      "postalCode": "10787",
+      "country": "DE"
+    },
+    {
+      "use": "home",
+      "type": "postal",
+      "text": "Postfach 74656, 76297 Sp\u00f6ck, Deutschland",
+      "line": [
+        "Postfach 74656"
+      ],
+      "_line": [
+        {
+          "extension": [
+            {
+              "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-postBox",
+              "valueString": "Postfach 74656"
+            }
+          ]
+        }
+      ],
+      "city": "Sp\u00f6ck",
+      "state": "DE-BW",
+      "postalCode": "76297",
+      "country": "DE"
+    },
+    {
+      "extension": [
+        {
+          "url": "http://hl7.org/fhir/StructureDefinition/iso21090-ADXP-precinct",
+          "valueString": "Kreuzberg"
+        }
+      ],
+      "use": "work",
+      "type": "physical",
+      "text": "Erlanger Allee 112, Berlin Kreuzberg",
+      "line": [
+        "Erlanger Allee 112",
+        "Kreuzberg"
+      ],
+      "city": "Berlin",
+      "postalCode": "10787"
+    }
+  ]
+}

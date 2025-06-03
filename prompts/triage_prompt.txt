@@ -1,0 +1,13 @@
+以下是病人描述的當前症狀，以及與其相關的既往病史 TAG：
+### SYMPTOM
+{SYMPTOM_TXT}
+### HISTORY_TAGS
+{HISTORY_TAGS}
+
+請輸出 JSON：
+{
+  "TAGS_CURRENT": [
+     {"tag":"<英文單字>", "score":<1-5>}, ...
+  ]
+}
+(最多 3 個 tag，score=5 表最急需就醫)
