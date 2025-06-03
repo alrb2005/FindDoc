@@ -1,6 +1,8 @@
 # FindDoc
 這是一個參考 Stanford LLM on FHIR 專案的 Python 版本，能夠讀取模擬 FHIR JSON 並用 GPT 模型產生中文摘要病例，協助尋找周遭相關診所。
 
+![](https://github.com/alrb2005/FindDoc/blob/master/Someone_lost.png?raw=true)
+
 ## 使用方式
 
 # 建立虛擬環境（可選）
