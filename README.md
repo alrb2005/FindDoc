@@ -14,17 +14,25 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # 設定 OpenAI API 金鑰
+
+OPENAI_API_KEY=你的OpenAI金鑰
+
+GMAPS_API_KEY=你的Google map 金鑰
+
 # 編輯 .env 檔案
 
 #Run Demo
-python run_full_demo.py ^
-  --patient_dir data\597103 ^ <-----模擬的病人資料
-  --loc "樹林區" ^ <----輸入所在位置
-  --symptom "胸悶"  <--- 輸入近期狀況
 
------------可以複製這個當作範例---------------
+python run_full_demo.py 
+
+  --patient_dir data/597072    # 模擬另一位病人
+  
+  --loc "大安區"               # 台北地區範例
+  
+  --symptom "胸悶"              # 症狀相同
+
+#可以複製這個當作範例
 python run_full_demo.py ^
   --patient_dir data\597072 ^
   --loc "大安區" ^
   --symptom "胸悶"
-----------------------------------------------
