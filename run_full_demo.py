@@ -2,6 +2,16 @@ import argparse, json, asyncio
 from pathlib import Path
 from summary_utils import load_fhir_json, gpt_summary
 from agents import context_builder, symptom_triage, recommender_worker, evaluator_agent
+import logging
+
+# 開啟全域 INFO（讓你自己的 logging.info() 仍會顯示）
+logging.basicConfig(level=logging.INFO)
+
+# 把 httpx／httpcore 的等級拉高到 WARNING，靜音 200 OK 訊息
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
 
 def load_all_fhir(patient_dir: Path):
     return [json.loads(p.read_text()) for p in patient_dir.glob("*.json")]
