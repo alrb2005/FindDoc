@@ -5,7 +5,6 @@ doctor: 內科
 endocrinologist: 內分泌科
 general_practitioner: 家庭醫學科
 gynecologist: 婦產科
-health: 內科外科牙科
 hospital: 醫院
 neurologist: 神經內科
 nutritionist: 營養醫學
@@ -17,4 +16,5 @@ pediatrician: 小兒科
 physiotherapist: 物理治療科
 psychiatrist: 精神科
 rheumatologist: 風濕免疫科
+spa: 其他
 urologist: 泌尿科

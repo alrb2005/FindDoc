@@ -9,6 +9,8 @@ import asyncio, math
 from typing import Dict, List
 from helpers import gmaps_client as gc
 from helpers import tag_mapping, address_utils, nhi_index
+# ↓ 新增：本地診所表
+from helpers import clinic_registry
 
 # 工具：計算距離（Haversine）
 def _haversine_km(lat1, lon1, lat2, lon2):
@@ -75,7 +77,43 @@ async def search_all_tags(tags_sorted: List[Dict], loc_str: str,
 
     tag2clinics: Dict[str, List] = {}
 
+    # 先取得 geocode 作為距離計算中心
+    if user_lat is None or user_lng is None:
+        geo = await gc.geocode_async(loc_str)
+        user_lat = geo["lat"]
+        user_lng = geo["lng"]
+
     for i, tag in enumerate(tag_list):
+
+        # ---------- ❶ 嘗試用本地 clinics.csv 直接抓 ----------
+        local_hits = clinic_registry.find_by_tag(tag, user_lat, user_lng, radius_km=8)
+        if local_hits:
+            # ------------ enrich：補 place_id / rating / map_url ------------
+            def _enrich(c: dict) -> dict:
+                # 已有 map_url 就略過
+                if c.get("map_url"):
+                    return c
+
+                # 保底：經緯度連結
+                c["map_url"] = f"https://www.google.com/maps/search/?api=1&query={c['lat']},{c['lng']}"
+
+                # 用「名稱 + 地址」找 Google Place
+                fp = gc.find_place(f"{c['clinic_name']} {c['address']}")
+                if fp:
+                    pid = fp["place_id"]
+                    c.update({
+                        "place_id": pid,
+                        "rating": fp.get("rating"),
+                        "map_url": gc.link_from_place_id(pid)
+                    })
+                time.sleep(0.25)   # 避免 QPS 過高（可調或移除）
+                return c
+
+            local_hits = [_enrich(c) for c in local_hits]
+            tag2clinics[tag] = local_hits
+            continue
+        # -----------------------------------------------------
+
         # 第一次若沒經緯度，先查第一家診所抓 lat/lng 當中心
         if i == 0 and (user_lat == user_lng == 0.0):
             tmp = await gc.text_search_async(f"{tag_mapping.to_keyword(tag)} near {loc_str}",
@@ -84,6 +122,7 @@ async def search_all_tags(tags_sorted: List[Dict], loc_str: str,
                 user_lat = tmp[0]["geometry"]["location"]["lat"]
                 user_lng = tmp[0]["geometry"]["location"]["lng"]
 
+        # fallback：Google TextSearch
         clinics = await _search_one_tag(tag, loc_str, user_lat, user_lng)
         tag2clinics[tag] = clinics
 
