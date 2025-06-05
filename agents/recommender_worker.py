@@ -1,129 +1,133 @@
 # -----------------------------------------------------------
 # 依 tags_sorted (最多 3) + 使用者地區字串
-# → Google TextSearch (動態半徑 2→4→8 km)
-# → 補 map_url / specialties / lat/lng
+# 1. 本地 CSV → ≤30 筆
+# 2. GPT-4o 精選 ≤5 家
+# 3. 只對「最後回傳」缺 lat/lng 的診所 geocode
+# 4. 若仍不足 3 家 → Google TextSearch
 # -----------------------------------------------------------
-
 from __future__ import annotations
-import asyncio, math
+import asyncio, json, re, pandas as pd
 from typing import Dict, List
 from helpers import gmaps_client as gc
-from helpers import tag_mapping, address_utils, nhi_index
-# ↓ 新增：本地診所表
-from helpers import clinic_registry
+from helpers import tag_mapping, address_utils, nhi_index, clinic_registry
+from helpers.llm_provider import chat_completion
 
-# 工具：計算距離（Haversine）
-def _haversine_km(lat1, lon1, lat2, lon2):
-    from math import radians, sin, cos, sqrt, atan2
-    R = 6371
-    dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
-    a = sin(dlat/2)**2 + cos(radians(lat1))*cos(radians(lat2))*sin(dlon/2)**2
-    return R * 2 * atan2(sqrt(a), sqrt(1-a))
+# －－一次把 CSV 載入記憶體－－
+_CSV_DF = pd.read_csv("data/clinics_standard.csv")
 
-async def _search_one_tag(tag: str, loc_str: str, lat0: float, lng0: float) -> List[Dict]:
-    """對單一 tag 動態擴半徑搜尋並回 clinic dict list"""
-    kwd   = tag_mapping.to_keyword(tag)
-    radius = 2000
-    clinics: List[Dict] = []
+# ------------------ GPT × CSV 智慧挑診所 --------------------
+async def smart_pick_clinics(tag: str, loc_str: str) -> list[dict]:
+    kw = address_utils.extract_keywords(loc_str)
+    patt = "|".join(map(re.escape, kw))
+    df = (
+        _CSV_DF
+        .query("specialty == @tag")
+        .query("address.str.contains(@patt)", engine="python")
+        .head(30)
+    )
+    cand = df.to_dict("records")
+    if not cand:
+        return []
 
-    while len(clinics) < 2 and radius <= 8000:
-        results = await gc.text_search_async(f"{kwd} near {loc_str}", radius, limit=5)
-        for r in results:
-            pid = r["place_id"]
-            addr = r.get("formatted_address", "")
-            # 避免重複 place_id
-            if any(c["place_id"] == pid for c in clinics):
-                continue
+    sys_prompt = (
+        "你是一位醫療推薦助理。以下是一組診所(JSON array)。\n"
+        "請選出最多 5 家最符合症狀與地點的診所，"
+        "並輸出 JSON array，每筆包含 name, address, need_geo。\n"
+        "不得加入多餘欄位或解釋。範例："
+        '[{"name":"AAA診所","address":"台北市…","need_geo":true}]'
+    )
 
-            lat = r["geometry"]["location"]["lat"]
-            lng = r["geometry"]["location"]["lng"]
-            dist_km = _haversine_km(lat0, lng0, lat, lng)
+    gpt_json = chat_completion(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": json.dumps(cand, ensure_ascii=False)},
+        ],
+        json_mode=True
+    )
+    try:
+        picks = json.loads(gpt_json)
+    except Exception:
+        return []
 
-            clinic = {
-                "place_id": pid,
-                "name": r["name"],
-                "formatted_address": addr,
-                "lat": lat,
-                "lng": lng,
-                "dist_m": round(dist_km * 1000),
-                "rating": r.get("rating"),
-                "map_url": gc.link_from_place_id(pid),
-                # 先映射 Google types
-                "specialties": gc.map_types(r.get("types", [])),
-            }
+    if not (isinstance(picks, list) and all(isinstance(x, dict) for x in picks)):
+        return []
+    return picks[:5]  # 保險上限
 
-            # 用 NHI 名冊補專精
-            addr_norm = address_utils.normalize(addr)
-            off_specs = nhi_index.get_specialties(addr_norm)
-            if off_specs:
-                clinic["specialties"] = list(set(clinic["specialties"]) | set(off_specs))
+# ------------------ Google TextSearch Fallback --------------
+async def _search_one_tag(tag: str, loc_str: str,
+                          lat0: float, lng0: float) -> list[dict]:
+    kwd = tag_mapping.to_keyword(tag)
+    
+    # 加上「診所」二字，鎖定醫療場所
+    kwd = f"{kwd} 診所"
+    for radius in (2000, 4000, 8000):
+        results = await gc.text_search_async(f"{kwd} near {loc_str}",
+                                             radius, limit=5)
+        if results:
+            break
+    clinics = []
+    for r in results[:5]:
+        clinics.append({
+            "place_id": r["place_id"],
+            "name": r["name"],
+            "address": r.get("formatted_address", ""),
+            "lat": r["geometry"]["location"]["lat"],
+            "lng": r["geometry"]["location"]["lng"],
+            "map_url": gc.link_from_place_id(r["place_id"]),
+            "rating": r.get("rating"),
+            "specialties": gc.map_types(r.get("types", [])),
+        })
+    return clinics
 
-            clinics.append(clinic)
+# ------------------ 跑一次 geocode 補缺 ----------------------
+async def _enrich_final(clis: list[dict]) -> list[dict]:
+    for c in clis:
+        if c.get("lat") and c.get("lng"):
+            continue
+        geo = await gc.geocode_async(c["address"])
+        if geo:
+            loc = geo[0]["geometry"]["location"]
+            c["lat"], c["lng"] = loc["lat"], loc["lng"]
+            c["map_url"] = gc.link_from_place_id(geo[0]["place_id"])
+    return clis
 
-        radius *= 2  # 擴半徑
-
-    return clinics[:5]  # 最多 5 間
-
+# ------------------ 對外主函式 ------------------------------
 async def search_all_tags(tags_sorted: List[Dict], loc_str: str,
                           user_lat: float | None = None,
                           user_lng: float | None = None) -> Dict[str, List[Dict]]:
-    """
-    tags_sorted 來自 GPT；loc_str 為使用者輸入（樹林區…）
-    若有 user_lat/lng，會用來計算距離；否則先抓第一家診所座標當基準。
-    """
-    tag_list = [d["tag"] for d in tags_sorted[:3]]
-    if user_lat is None or user_lng is None:
-        user_lat = user_lng = 0.0  # 占位，第一次搜尋後更新
 
-    tag2clinics: Dict[str, List] = {}
-
-    # 先取得 geocode 作為距離計算中心
     if user_lat is None or user_lng is None:
         geo = await gc.geocode_async(loc_str)
-        user_lat = geo["lat"]
-        user_lng = geo["lng"]
+        if geo:
+            loc = geo[0]["geometry"]["location"]
+            user_lat, user_lng = loc["lat"], loc["lng"]
+        else:
+            user_lat = user_lng = 0.0
 
-    for i, tag in enumerate(tag_list):
+    tag2clinics: Dict[str, List] = {}
+    for tag in [d["tag"] for d in tags_sorted[:3]]:
 
-        # ---------- ❶ 嘗試用本地 clinics.csv 直接抓 ----------
-        local_hits = clinic_registry.find_by_tag(tag, user_lat, user_lng, radius_km=8)
-        if local_hits:
-            # ------------ enrich：補 place_id / rating / map_url ------------
-            def _enrich(c: dict) -> dict:
-                # 已有 map_url 就略過
-                if c.get("map_url"):
-                    return c
+        # 1) GPT 精選
+        clis = await smart_pick_clinics(tag, loc_str)
 
-                # 保底：經緯度連結
-                c["map_url"] = f"https://www.google.com/maps/search/?api=1&query={c['lat']},{c['lng']}"
+        # 2) 若不足 3 家，用本地距離篩選補齊
+        if len(clis) < 3:
+            extra = clinic_registry.find_by_tag(
+                tag, user_lat, user_lng,
+                radius_km=8, loc_str=loc_str, with_geo=False
+            )
+            exist_names = {c.get("clinic_name") or c.get("name") for c in clis}
+            clis += [e for e in extra if e["clinic_name"] not in exist_names]
 
-                # 用「名稱 + 地址」找 Google Place
-                fp = gc.find_place(f"{c['clinic_name']} {c['address']}")
-                if fp:
-                    pid = fp["place_id"]
-                    c.update({
-                        "place_id": pid,
-                        "rating": fp.get("rating"),
-                        "map_url": gc.link_from_place_id(pid)
-                    })
-                time.sleep(0.25)   # 避免 QPS 過高（可調或移除）
-                return c
+        # 3) 仍不足 2 家 → Google TextSearch
+        if len(clis) < 2:
+            ts = await _search_one_tag(tag, loc_str, user_lat, user_lng)
+            exist_names = {c.get("clinic_name") or c.get("name") for c in clis}
+            clis += [t for t in ts if t["name"] not in exist_names]
 
-            local_hits = [_enrich(c) for c in local_hits]
-            tag2clinics[tag] = local_hits
-            continue
-        # -----------------------------------------------------
-
-        # 第一次若沒經緯度，先查第一家診所抓 lat/lng 當中心
-        if i == 0 and (user_lat == user_lng == 0.0):
-            tmp = await gc.text_search_async(f"{tag_mapping.to_keyword(tag)} near {loc_str}",
-                                             radius=2000, limit=1)
-            if tmp:
-                user_lat = tmp[0]["geometry"]["location"]["lat"]
-                user_lng = tmp[0]["geometry"]["location"]["lng"]
-
-        # fallback：Google TextSearch
-        clinics = await _search_one_tag(tag, loc_str, user_lat, user_lng)
-        tag2clinics[tag] = clinics
+        # 4) 最後只對要回傳的 ≤5 家補經緯度
+        clis = await _enrich_final(clis[:5])
+        tag2clinics[tag] = clis
 
     return tag2clinics

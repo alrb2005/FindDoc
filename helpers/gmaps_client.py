@@ -9,7 +9,6 @@ Google Places API 封裝 + SQLite 快取 + 中文科別映射 (YAML + GPT 查詢
 環境變數:
   • GMPS_KEY (優先) 或 GMAPS_API_KEY ── Google Maps API Key
 """
-
 from __future__ import annotations
 
 # ────── 內建 / 第三方 ──────────────────────────────────────────
@@ -77,7 +76,7 @@ async def _http_get(url: str, params: Dict[str, Any]) -> Dict[str, Any]:
 async def text_search_async(
     query: str, radius: int = 2000, limit: int = 5
 ) -> List[Dict[str, Any]]:
-    """非同步呼叫 Google TextSearch，回傳前 limit 筆結果"""
+    """非同步呼叫 Google Text Search，回傳前 limit 筆結果"""
     url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
     params = {
         "query": query,
@@ -101,11 +100,39 @@ async def details_async(place_id: str) -> Dict[str, Any]:
     data = await _fetch_or_cache_async(cache_key, lambda: _http_get(url, params))
     return data.get("result", {})
 
-# ────── 6. 產生 Google Maps 連結 ─────────────────────────────
+# ────── 6. Geocoding（★ 新增）─────────────────────────────────
+async def geocode_async(address: str) -> List[Dict[str, Any]]:
+    """
+    非同步呼叫 Google Geocoding API，回傳 results 陣列。
+    """
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    params = {
+        "address": address,
+        "language": "zh-TW",
+        "key": _API_KEY,
+    }
+    cache_key = f"geocode::{address}"
+    data = await _fetch_or_cache_async(cache_key, lambda: _http_get(url, params))
+    return data.get("results", [])
+
+def geocode(address: str) -> List[Dict[str, Any]]:
+    """
+    同步包裝：在一般 (非 async) 程式碼中直接呼叫 geocode。
+    自動偵測是否已有 event loop，避免 nested loop crash。
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        fut = asyncio.run_coroutine_threadsafe(geocode_async(address), loop)
+        return fut.result()
+    except RuntimeError:
+        # 無 event loop
+        return asyncio.run(geocode_async(address))
+
+# ────── 7. 產生 Google Maps 連結 ─────────────────────────────
 def link_from_place_id(pid: str) -> str:
     return f"https://www.google.com/maps/place/?q=place_id:{pid}"
 
-# ────── 7. type ➜ 中文科別對映 ───────────────────────────────
+# ────── 8. type ➜ 中文科別對映 ───────────────────────────────
 _TYPE_YAML = pathlib.Path(__file__).with_name("type_map.yaml")
 _TYPE_TO_CN: Dict[str, str]
 if _TYPE_YAML.exists():
@@ -120,8 +147,8 @@ def _gpt_cn_from_type(t: str) -> str | None:
     """
     prompt = (
         f"請將 Google Maps place type `{t}` 翻成台灣健保常用科別中文，"
-        "若無對應請回『其他』或『unknown』。"
-        "若是推測，請在最後加上（推測）。"
+        "若無對應請回『其他』或『unknown』。\n"
+        "若是推測，請在最後加上（推測）。\n"
         "請只回中文科別，不要加解釋。"
     )
     try:

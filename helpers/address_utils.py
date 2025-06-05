@@ -91,3 +91,16 @@ def get_variants(addr_key: str, span: int = 3) -> list[str]:
         f"{pre}{n}{post}" for n in range(num - span, num + span + 1)
     ]
     return variants
+
+
+def extract_keywords(loc_str: str) -> list[str]:
+    """
+    '台北市中正區' → ['台北市', '中正區']
+    '新北市樹林區' → ['新北市', '樹林區']
+    取市 / 縣 + 區，作為簡單關鍵字篩選。
+    """
+    loc_str = re.sub(r"\s+", "", loc_str)
+    m = re.match(r"(.+[市縣])(.+[區鄉鎮市])?", loc_str)
+    if not m:
+        return [loc_str]
+    return [p for p in m.groups() if p]
